@@ -7,6 +7,7 @@ interface SpatialCanvasProps {
   messages: Message[];
   onSummarize: (fileId: string) => void;
   onNodeMove?: (id: string, x: number, y: number, type: 'file' | 'message') => void;
+  onDeleteNode?: (id: string, type: 'file' | 'message') => void;
 }
 
 interface Node {
@@ -32,7 +33,7 @@ interface TransformState {
   scale: number;
 }
 
-export const SpatialCanvas: React.FC<SpatialCanvasProps> = ({ files, messages, onSummarize, onNodeMove }) => {
+export const SpatialCanvas: React.FC<SpatialCanvasProps> = ({ files, messages, onSummarize, onNodeMove, onDeleteNode }) => {
   // State
   const [nodes, setNodes] = useState<Node[]>([]);
   const [manualLinks, setManualLinks] = useState<[string, string][]>([]);
@@ -211,6 +212,14 @@ export const SpatialCanvas: React.FC<SpatialCanvasProps> = ({ files, messages, o
     }
   };
 
+  const handleDeleteAction = () => {
+    if (contextMenu.nodeId && onDeleteNode) {
+        const node = nodes.find(n => n.id === contextMenu.nodeId);
+        if (node) onDeleteNode(node.id, node.type);
+        setContextMenu(prev => ({ ...prev, visible: false }));
+    }
+  };
+
   const handleLinkAction = () => {
       const ids = Array.from(selectedNodeIds) as string[];
       if (ids.length < 2) return;
@@ -349,6 +358,14 @@ export const SpatialCanvas: React.FC<SpatialCanvasProps> = ({ files, messages, o
                         >
                             <Icon name="Link" size={12} className="text-green-400" />
                             Link Selected ({selectedNodeIds.size})
+                        </button>
+                        <div className="my-1 border-t border-white/5"></div>
+                        <button 
+                            onClick={handleDeleteAction}
+                            className="w-full text-left px-3 py-2 text-xs hover:bg-red-500/20 text-textDim hover:text-red-400 flex items-center gap-2"
+                        >
+                            <Icon name="Trash2" size={12} />
+                            Delete Node
                         </button>
                     </>
                 ) : (

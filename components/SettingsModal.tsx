@@ -7,9 +7,10 @@ interface SettingsModalProps {
   onClose: () => void;
   settings: AISettings;
   onSave: (settings: AISettings) => void;
+  onPurgeData: () => void;
 }
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings, onSave }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings, onSave, onPurgeData }) => {
   const [localSettings, setLocalSettings] = React.useState<AISettings>(settings);
 
   if (!isOpen) return null;
@@ -20,10 +21,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="w-[500px] bg-surface border border-border rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+      <div className="w-[500px] bg-surface border border-border rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/5 bg-surfaceHighlight/50">
+        <div className="flex items-center justify-between p-6 border-b border-white/5 bg-surfaceHighlight/50 shrink-0">
           <div>
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
               <Icon name="Settings" className="text-accent" />
@@ -37,7 +38,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
         </div>
 
         {/* Body */}
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-6 overflow-y-auto">
           
           {/* Embedding Provider Selector */}
           <div className="space-y-3">
@@ -169,10 +170,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
 
           </div>
 
+          <div className="border-t border-white/5 my-2"></div>
+          
+          {/* Data Management (Danger Zone) */}
+          <div className="space-y-3">
+             <label className="text-xs font-mono uppercase text-red-500/80">Danger Zone</label>
+             <div className="p-4 border border-red-500/20 bg-red-500/5 rounded-lg flex items-center justify-between">
+                <div>
+                    <h3 className="text-sm font-bold text-white">Factory Reset</h3>
+                    <p className="text-[10px] text-textDim">Deletes all indexed files, messages, and settings.</p>
+                </div>
+                <button 
+                    onClick={onPurgeData}
+                    className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/50 rounded text-xs font-bold transition-all"
+                >
+                    PURGE DATA
+                </button>
+             </div>
+          </div>
+
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-surfaceHighlight/30 flex justify-end gap-2">
+        <div className="p-4 bg-surfaceHighlight/30 flex justify-end gap-2 shrink-0">
           <button onClick={onClose} className="px-4 py-2 text-xs font-bold text-textDim hover:text-white transition-colors">
             CANCEL
           </button>

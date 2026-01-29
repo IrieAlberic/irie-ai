@@ -9,9 +9,11 @@ interface ChatInterfaceProps {
   onSend: () => void;
   isLoading: boolean;
   onCitationClick: (citation: DocumentChunk) => void;
+  onClearChat?: () => void;
+  onDeleteMessage?: (id: string) => void;
 }
 
-export const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages, input, setInput, onSend, isLoading, onCitationClick }) => {
+export const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages, input, setInput, onSend, isLoading, onCitationClick, onClearChat, onDeleteMessage }) => {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -22,6 +24,19 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages, input, s
     <div className="flex flex-col h-full bg-background relative">
       {/* Background Grid */}
       <div className="absolute inset-0 grid-bg pointer-events-none opacity-20"></div>
+
+      {/* Header overlay for actions */}
+      {messages.length > 0 && (
+         <div className="absolute top-0 right-0 p-4 z-20">
+             <button 
+                onClick={onClearChat}
+                className="flex items-center gap-2 px-3 py-1.5 bg-surfaceHighlight/50 backdrop-blur hover:bg-red-500/20 border border-white/5 hover:border-red-500/50 rounded text-[10px] text-textDim hover:text-red-400 transition-all"
+             >
+                 <Icon name="Eraser" size={12} />
+                 CLEAR SESSION
+             </button>
+         </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-8 space-y-8 z-10 scroll-smooth">
@@ -34,12 +49,24 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages, input, s
         )}
 
         {messages.map((msg) => (
-          <div key={msg.id} className={`flex flex-col max-w-3xl mx-auto ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+          <div key={msg.id} className={`group flex flex-col max-w-3xl mx-auto ${msg.role === 'user' ? 'items-end' : 'items-start'} relative`}>
              <div className="flex items-center gap-2 mb-2 opacity-50 text-xs font-mono uppercase">
                 <span>{msg.role === 'user' ? 'Operator' : 'IRIE'}</span>
                 <span>•</span>
                 <span>{new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
              </div>
+             
+             {/* Delete Button (Visible on hover) */}
+             <button
+                onClick={() => onDeleteMessage && onDeleteMessage(msg.id)}
+                className={`
+                    absolute top-6 p-1.5 opacity-0 group-hover:opacity-100 transition-opacity text-textDim hover:text-red-400
+                    ${msg.role === 'user' ? '-left-8' : '-right-8'}
+                `}
+                title="Delete Message"
+             >
+                 <Icon name="Trash" size={14} />
+             </button>
              
              <div className={`
                p-4 rounded-lg text-sm leading-relaxed whitespace-pre-wrap

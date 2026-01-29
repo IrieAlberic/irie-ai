@@ -1,23 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UploadedFile, AppView } from '../types';
 import { Icon } from './Icon';
 
 interface SidebarProps {
   files: UploadedFile[];
   onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onDeleteFile: (id: string) => void;
   currentView: AppView;
   onViewChange: (view: AppView) => void;
   onOpenSettings: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ files, onUpload, currentView, onViewChange, onOpenSettings }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ files, onUpload, onDeleteFile, currentView, onViewChange, onOpenSettings }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const totalChunks = files.reduce((acc, f) => acc + f.chunks.length, 0);
+
+  // Context Menu State
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, fileId: string } | null>(null);
+
+  const handleContextMenu = (e: React.MouseEvent, fileId: string) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, fileId });
+  };
+
+  // Close context menu on click elsewhere
+  useEffect(() => {
+    const handleClick = () => setContextMenu(null);
+    window.addEventListener('click', handleClick);
+    return () => window.removeEventListener('click', handleClick);
+  }, []);
 
   return (
     <aside 
       className={`
-        bg-surface border-r border-border flex flex-col h-full z-20 shrink-0 transition-all duration-300 ease-in-out
+        bg-surface border-r border-border flex flex-col h-full z-20 shrink-0 transition-all duration-300 ease-in-out select-none
         ${isCollapsed ? 'w-[70px]' : 'w-64'}
       `}
     >
@@ -42,7 +58,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ files, onUpload, currentView, 
         </button>
       </div>
       
-      {/* Toggle Button for Collapsed State (Centered below logo) */}
+      {/* Toggle Button for Collapsed State */}
       {isCollapsed && (
          <button 
             onClick={() => setIsCollapsed(!isCollapsed)}
@@ -91,12 +107,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ files, onUpload, currentView, 
                 
                 <div className="space-y-2 animate-in fade-in duration-300">
                 {files.map(file => (
-                    <div key={file.id} className="group flex items-center justify-between py-2 border-b border-white/5">
-                    <div className="flex items-center gap-2 overflow-hidden">
-                        <Icon name="FileText" size={14} className="text-textDim" />
-                        <span className="text-sm text-text truncate w-32">{file.name}</span>
-                    </div>
-                    <span className={`w-2 h-2 rounded-full ${file.status === 'ready' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-yellow-500 animate-pulse'}`} />
+                    <div 
+                        key={file.id} 
+                        onContextMenu={(e) => handleContextMenu(e, file.id)}
+                        className="group flex items-center justify-between py-2 border-b border-white/5 cursor-pointer hover:bg-white/5 px-2 -mx-2 rounded transition-colors"
+                    >
+                        <div className="flex items-center gap-2 overflow-hidden">
+                            <Icon name="FileText" size={14} className="text-textDim" />
+                            <span className="text-sm text-text truncate w-32">{file.name}</span>
+                        </div>
+                        <span className={`w-2 h-2 rounded-full ${file.status === 'ready' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-yellow-500 animate-pulse'}`} />
                     </div>
                 ))}
 
@@ -156,6 +176,31 @@ export const Sidebar: React.FC<SidebarProps> = ({ files, onUpload, currentView, 
             </div>
         )}
       </div>
+
+      {/* Context Menu Portal */}
+      {contextMenu && (
+        <div 
+            className="fixed z-50 bg-surface border border-white/10 rounded shadow-xl py-1 w-32 animate-in fade-in zoom-in-95 duration-75"
+            style={{ top: contextMenu.y, left: contextMenu.x }}
+        >
+             <div className="px-3 py-1.5 text-[10px] text-textDim uppercase font-bold border-b border-white/5 mb-1">
+                 Actions
+             </div>
+             <button 
+                onClick={() => onDeleteFile(contextMenu.fileId)}
+                className="w-full text-left px-3 py-2 text-xs hover:bg-red-500/20 hover:text-red-400 text-textDim flex items-center gap-2 transition-colors"
+             >
+                <Icon name="Trash2" size={12} />
+                Delete File
+             </button>
+             <button 
+                className="w-full text-left px-3 py-2 text-xs hover:bg-white/5 text-textDim flex items-center gap-2 transition-colors opacity-50 cursor-not-allowed"
+             >
+                <Icon name="Edit2" size={12} />
+                Rename
+             </button>
+        </div>
+      )}
     </aside>
   );
 };

@@ -27,3 +27,22 @@ export const updateFilePosition = async (id: string, x: number, y: number) => {
 export const updateMessagePosition = async (id: string, x: number, y: number) => {
   await db.messages.update(id, { x, y });
 };
+
+// Helpers de suppression
+export const deleteFileFromDb = async (id: string) => {
+  await db.files.delete(id);
+};
+
+export const deleteMessageFromDb = async (id: string) => {
+  await db.messages.delete(id);
+};
+
+export const clearMessagesFromDb = async () => {
+  await db.messages.clear();
+};
+
+export const purgeDatabase = async () => {
+  await db.files.clear();
+  await db.messages.clear();
+  await db.extractedData.clear();
+};

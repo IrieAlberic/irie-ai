@@ -76,9 +76,20 @@
         "react-dom/": "https://esm.sh/react-dom@18.3.1/",
         "pdfjs-dist": "https://esm.sh/pdfjs-dist@3.11.174",
         "dexie": "https://esm.sh/dexie@4.0.1",
-        "@xenova/transformers": "https://esm.sh/@xenova/transformers@2.16.0"
+        "@xenova/transformers": "https://esm.sh/@xenova/transformers@2.16.0",
+        "buffer": "https://esm.sh/buffer@6.0.3",
+        "long": "https://esm.sh/long@5.2.3",
+        "process": "https://esm.sh/process@0.11.10",
+        "stream": "https://esm.sh/stream-browserify@3.0.0",
+        "util": "https://esm.sh/util@0.12.5"
       }
     }
+    </script>
+    <script type="module">
+      import { Buffer } from 'buffer';
+      import process from 'process';
+      window.Buffer = Buffer;
+      window.process = process;
     </script>
   </head>
   <body>

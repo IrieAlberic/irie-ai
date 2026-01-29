@@ -9,7 +9,7 @@ import { Icon } from './components/Icon';
 import { processFile } from './services/documentProcessor';
 import { retrieveContext, generateRAGResponse, extractStructuredData } from './services/ai';
 import { UploadedFile, AppView, Message, ExtractedEntity, AISettings, DocumentChunk } from './types';
-import { db, updateFilePosition, updateMessagePosition } from './services/db';
+import { db, updateFilePosition, updateMessagePosition, deleteFileFromDb, deleteMessageFromDb, clearMessagesFromDb, purgeDatabase } from './services/db';
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>('chat');
@@ -69,7 +69,38 @@ const App: React.FC = () => {
     localStorage.setItem('irie_ai_settings', JSON.stringify(newSettings));
   };
 
-  // --- HANDLERS ---
+  // --- HANDLERS (CRUD) ---
+
+  const handleDeleteFile = async (id: string) => {
+    if (window.confirm("Permanently delete this file and its index?")) {
+        setFiles(prev => prev.filter(f => f.id !== id));
+        if (viewingFileId === id) setViewingFileId(null);
+        await deleteFileFromDb(id);
+    }
+  };
+
+  const handleDeleteMessage = async (id: string) => {
+    setMessages(prev => prev.filter(m => m.id !== id));
+    await deleteMessageFromDb(id);
+  };
+
+  const handleClearChat = async () => {
+    if (window.confirm("Clear current session history?")) {
+        setMessages([]);
+        await clearMessagesFromDb();
+    }
+  };
+
+  const handlePurgeData = async () => {
+     if (window.confirm("FACTORY RESET: This will delete ALL files, indexes, and messages. Are you sure?")) {
+         await purgeDatabase();
+         setFiles([]);
+         setMessages([]);
+         setExtractedData([]);
+         setViewingFileId(null);
+         window.location.reload(); 
+     }
+  };
 
   // File Upload Handler
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -223,6 +254,7 @@ const App: React.FC = () => {
       <Sidebar 
         files={files} 
         onUpload={handleFileUpload} 
+        onDeleteFile={handleDeleteFile}
         currentView={view} 
         onViewChange={setView}
         onOpenSettings={() => setIsSettingsOpen(true)}
@@ -238,6 +270,8 @@ const App: React.FC = () => {
                     onSend={handleSendMessage}
                     isLoading={isLoading}
                     onCitationClick={handleCitationClick}
+                    onClearChat={handleClearChat}
+                    onDeleteMessage={handleDeleteMessage}
                 />
             )}
             {view === 'spatial' && (
@@ -246,6 +280,7 @@ const App: React.FC = () => {
                     messages={messages} 
                     onSummarize={handleSummarizeNode}
                     onNodeMove={handleNodeMove}
+                    onDeleteNode={(id, type) => type === 'file' ? handleDeleteFile(id) : handleDeleteMessage(id)}
                 />
             )}
             {view === 'data' && (
@@ -284,6 +319,7 @@ const App: React.FC = () => {
         onClose={() => setIsSettingsOpen(false)} 
         settings={aiSettings}
         onSave={handleSaveSettings}
+        onPurgeData={handlePurgeData}
       />
     </div>
   );
