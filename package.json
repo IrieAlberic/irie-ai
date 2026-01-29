@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@google/genai": "^0.1.1",
+    "@google/genai": "^0.2.1",
     "@xenova/transformers": "^2.16.0",
     "assert": "^2.0.0",
     "buffer": "^6.0.3",
