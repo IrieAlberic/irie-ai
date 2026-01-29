@@ -1,0 +1,1 @@
+export default function FractalCanvas() { return null; }

@@ -1,0 +1,1 @@
+export default function VoronoiCanvas() { return null; }
