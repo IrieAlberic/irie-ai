@@ -1,6 +1,8 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
-import { DocumentChunk, Message, ExtractedEntity, AISettings } from "../types";
+import { DocumentChunk, Message, ExtractedEntity, AISettings, AIRole } from "../types";
 import { pipeline, env } from '@xenova/transformers';
+import { SYSTEM_ROLES } from "../constants";
 
 // --- CONFIG FOR LOCAL MODELS ---
 env.allowLocalModels = false; // Must be false for browser env to use CDN
@@ -40,7 +42,6 @@ export const getEmbedding = async (text: string, settings: AISettings): Promise<
     try {
       const pipe = await getLocalEmbeddingPipeline();
       const output = await pipe(text, { pooling: 'mean', normalize: true });
-      // Convert Tensor to plain array
       return Array.from(output.data);
     } catch (error) {
       console.error("Local Embedding Error:", error);
@@ -48,7 +49,31 @@ export const getEmbedding = async (text: string, settings: AISettings): Promise<
     }
   }
 
-  // 2. Gemini (Cloud) Provider
+  // 2. OpenAI Provider (New)
+  if (settings.embeddingProvider === 'openai') {
+    if (!settings.openaiKey) return null;
+    try {
+      const response = await fetch("https://api.openai.com/v1/embeddings", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${settings.openaiKey}`
+        },
+        body: JSON.stringify({
+            model: "text-embedding-3-small", // Standard efficient model
+            input: text
+        })
+      });
+      if (!response.ok) throw new Error("OpenAI Embedding Failed");
+      const data = await response.json();
+      return data.data[0].embedding;
+    } catch (error) {
+      console.error("OpenAI Embedding Error:", error);
+      return null;
+    }
+  }
+
+  // 3. Gemini (Cloud) Provider
   const key = settings.geminiKey || process.env.API_KEY;
   if (!key) return null;
 
@@ -81,6 +106,13 @@ export const retrieveContext = async (
 
   const scoredChunks = allChunks.map(chunk => {
     if (!chunk.embedding) return { ...chunk, score: -1 };
+    
+    // Safety check: vectors must match dimension
+    if (chunk.embedding.length !== queryEmbedding.length) {
+       // Silent fail or very low score for mismatched dimensions
+       return { ...chunk, score: -1 };
+    }
+
     return {
       ...chunk,
       score: cosineSimilarity(queryEmbedding, chunk.embedding)
@@ -88,7 +120,7 @@ export const retrieveContext = async (
   });
 
   return scoredChunks
-    .filter(c => c.score > 0.4) // Threshold might need tuning between models
+    .filter(c => c.score > 0.35) // Slightly looser threshold for cross-model variance
     .sort((a, b) => b.score - a.score)
     .slice(0, topK);
 };
@@ -98,22 +130,32 @@ export const retrieveContext = async (
 export const generateRAGResponse = async (
   history: Message[], 
   contextChunks: DocumentChunk[],
-  settings: AISettings
+  settings: AISettings,
+  activeRole: AIRole = 'analyst'
 ): Promise<string> => {
   const contextText = contextChunks.map(c => `[Source: ${c.docId}]\n${c.text}`).join("\n\n");
   
-  const systemPrompt = `
-    You are IRIE, an advanced Knowledge Operating System designed for clarity and efficiency.
+  // Get specific system prompt from Role Definition
+  const rolePrompt = SYSTEM_ROLES[activeRole].systemPrompt;
+
+  const finalSystemPrompt = `
+    You are IRIE, a Knowledge Operating System.
+    
+    CURRENT ROLE: ${rolePrompt}
     
     INSTRUCTIONS:
-    1. Answer strictly based on the provided CONTEXT.
-    2. Be concise, technical, and professional. NO EMOJIS.
-    3. Use Markdown.
-    4. If info is missing, say "Data not found in source index."
+    1. Base your answer strictly on the provided CONTEXT below.
+    2. Respond in the same language as the user's question.
+    3. Use Markdown formatting.
     
     CONTEXT DATA:
     ${contextText}
   `;
+
+  // TOKEN OPTIMIZATION: Sliding Window Strategy
+  const recentHistory = history
+    .filter(m => m.role !== 'system')
+    .slice(-10);
 
   try {
     // --- 1. GEMINI PROVIDER ---
@@ -123,24 +165,56 @@ export const generateRAGResponse = async (
       const ai = new GoogleGenAI({ apiKey: settings.geminiKey || process.env.API_KEY });
       const response = await ai.models.generateContent({
         model: settings.modelName || 'gemini-3-flash-preview',
-        contents: history.map(m => ({
+        contents: recentHistory.map(m => ({
           role: m.role,
           parts: [{ text: m.content }]
         })),
         config: {
-          systemInstruction: systemPrompt,
-          temperature: 0.3,
+          systemInstruction: finalSystemPrompt,
+          temperature: activeRole === 'creative' ? 0.7 : 0.3, 
         }
       });
       return response.text || "No response.";
     }
 
-    // --- 2. OLLAMA PROVIDER (Local) ---
+    // --- 2. OPENROUTER PROVIDER (New) ---
+    if (settings.provider === 'openrouter') {
+        if (!settings.openrouterKey) throw new Error("Missing OpenRouter Key");
+
+        const messages = [
+            { role: "system", content: finalSystemPrompt },
+            ...recentHistory.map(m => ({ role: m.role, content: m.content }))
+        ];
+
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${settings.openrouterKey}`,
+                "HTTP-Referer": window.location.origin, // Optional OpenRouter requirement
+                "X-Title": "IRIE Knowledge OS"
+            },
+            body: JSON.stringify({
+                model: settings.modelName || "meta-llama/llama-3-8b-instruct:free", // Default to free model
+                messages: messages,
+                temperature: activeRole === 'creative' ? 0.7 : 0.3
+            })
+        });
+
+        if (!response.ok) {
+           const err = await response.json();
+           throw new Error(`OpenRouter Error: ${err.error?.message || response.statusText}`);
+        }
+        const data = await response.json();
+        return data.choices[0]?.message?.content || "No response.";
+    }
+
+    // --- 3. OLLAMA PROVIDER (Local) ---
     if (settings.provider === 'ollama') {
         const baseUrl = settings.ollamaUrl || 'http://localhost:11434';
         
         // Construct prompt manually for Ollama
-        const fullPrompt = `${systemPrompt}\n\nChat History:\n${history.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n')}\n\nMODEL ANSWER:`;
+        const fullPrompt = `${finalSystemPrompt}\n\nChat History:\n${recentHistory.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n')}\n\nMODEL ANSWER:`;
 
         const response = await fetch(`${baseUrl}/api/generate`, {
             method: 'POST',
@@ -157,13 +231,13 @@ export const generateRAGResponse = async (
         return data.response;
     }
 
-    // --- 3. OPENAI PROVIDER ---
+    // --- 4. OPENAI PROVIDER ---
     if (settings.provider === 'openai') {
         if (!settings.openaiKey) throw new Error("Missing OpenAI API Key");
 
         const messages = [
-            { role: "system", content: systemPrompt },
-            ...history.map(m => ({ role: m.role, content: m.content }))
+            { role: "system", content: finalSystemPrompt },
+            ...recentHistory.map(m => ({ role: m.role, content: m.content }))
         ];
 
         const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -175,7 +249,7 @@ export const generateRAGResponse = async (
             body: JSON.stringify({
                 model: settings.modelName || "gpt-4o",
                 messages: messages,
-                temperature: 0.3
+                temperature: activeRole === 'creative' ? 0.7 : 0.3
             })
         });
 
@@ -195,15 +269,15 @@ export const generateRAGResponse = async (
   }
 };
 
-// --- DATA EXTRACTION (Currently stuck to Gemini for complex JSON schema support) ---
+// --- DATA EXTRACTION ---
 export const extractStructuredData = async (
   filesContent: string[],
   settings: AISettings
 ): Promise<ExtractedEntity[]> => {
   if (filesContent.length === 0) return [];
   
-  // Note: structured output is best with Gemini/OpenAI. 
-  // We use the Gemini Key from settings if available, else fallback
+  // Helper to fallback to text extraction if schema not supported
+  // For now, we only support Gemini for JSON Schema extraction reliably in V1
   const key = settings.geminiKey || process.env.API_KEY;
   if (!key) return [];
 

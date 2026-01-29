@@ -1,3 +1,4 @@
+
 export interface DocumentChunk {
   id: string;
   docId: string;
@@ -40,13 +41,18 @@ export interface ExtractedEntity {
 
 export type AppView = 'chat' | 'spatial' | 'data' | 'podcast';
 
-export type AIProvider = 'gemini' | 'openai' | 'ollama';
+export type AIProvider = 'gemini' | 'openai' | 'ollama' | 'openrouter';
+
+export type EmbeddingProvider = 'local' | 'gemini' | 'openai';
+
+export type AIRole = 'analyst' | 'tutor' | 'critic' | 'creative' | 'coder';
 
 export interface AISettings {
   provider: AIProvider;
-  embeddingProvider: 'local' | 'gemini';
+  embeddingProvider: EmbeddingProvider;
   geminiKey: string;
   openaiKey: string;
+  openrouterKey: string;
   ollamaUrl: string; // e.g. http://localhost:11434
   modelName: string; // e.g. gemini-1.5-flash or gpt-4o
 }

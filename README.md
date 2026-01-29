@@ -1,10 +1,11 @@
-# IRIE | Knowledge Operating System
+
+# IRIE AI | Knowledge Operating System
 
 ![Status](https://img.shields.io/badge/Status-Beta-blue) ![Privacy](https://img.shields.io/badge/Privacy-Local--First-green) ![Stack](https://img.shields.io/badge/Tech-React%20%7C%20TypeScript%20%7C%20Gemini-orange)
 
-**IRIE** is a secure, local-first **Knowledge Operating System**. Unlike traditional chatbots, IRIE acts as a workspace that indexes your documents (PDF, TXT, MD, CSV) directly in your browser using IndexedDB and Vectors, allowing for secure Retrieval-Augmented Generation (RAG) without your data simply vanishing into the cloud.
+**IRIE AI** is a secure, local-first **Knowledge Operating System**. Unlike traditional chatbots that send your data to the cloud blindly, IRIE AI indexes your documents (PDF, TXT, MD, CSV) directly in your browser using IndexedDB and Vector Embeddings.
 
-It features a **Spatial Canvas** for thinking with your data, a **Data Extraction** engine for structured intelligence, and supports multiple AI providers (Gemini, OpenAI, Ollama).
+It creates a "neural layer" over your files, allowing you to chat, reason, and visualize connections securely using a Multi-Model architecture (Gemini, OpenAI, Ollama, OpenRouter).
 
 ---
 
@@ -39,6 +40,7 @@ graph TD
         Gemini[("Google Gemini")]
         OpenAI[("OpenAI")]
         Ollama[("Ollama (Localhost)")]
+        OpenRouter[("OpenRouter")]
     end
 
     %% Data Flow
@@ -53,34 +55,39 @@ graph TD
     DB_SVC --> Store_Chat
     
     UI --> |Query| AI_SVC
-    AI_SVC --> |RAG Retrieval (Top-K)| DB_SVC
+    AI_SVC --> |RAG Retrieval Top-K| DB_SVC
     AI_SVC --> |Generate Response| Gemini
     AI_SVC --> |Generate Response| OpenAI
     AI_SVC --> |Generate Response| Ollama
+    AI_SVC --> |Generate Response| OpenRouter
 ```
 
 ---
 
 ## Key Features
 
-### 1. Local-First RAG Pipeline
-- **Smart Indexing**: Uploads are chunked semantically and stored locally.
-- **Hybrid Embeddings**: Choose between purely local embeddings (running in-browser via Transformers.js) or high-quality Cloud embeddings.
-- **Zero-Latency Context**: Context is retrieved from IndexedDB instantly.
+### 1. Zero-Trust RAG Pipeline
+- **Smart Indexing**: Uploads are chunked semantically and stored locally in IndexedDB.
+- **Hybrid Embeddings**: Choose between purely local embeddings (running in-browser via Transformers.js) for air-gapped security, or high-quality Cloud embeddings (Gemini/OpenAI).
+- **Privacy First**: Your documents never leave your device unless you explicitly choose a cloud model for inference.
 
-### 2. Spatial Canvas
-- **Mind-Map Interface**: Drag and drop your files and chat messages onto an infinite canvas.
-- **Visual Organization**: Group related concepts spatially.
-- **Persistence**: Your layout is saved automatically.
+### 2. Multi-Model Core
+- **Agnostic Intelligence**: Switch instantly between models based on your needs:
+    - **Google Gemini 1.5**: Best for long context and speed.
+    - **GPT-4o**: High reasoning capabilities.
+    - **Ollama (Llama 3)**: 100% Offline and Private.
+    - **OpenRouter**: Access to Claude 3 Opus, Mistral, and more.
 
-### 3. Structured Data Extraction
-- **Unstructured to JSON**: Automatically convert raw text documents into structured entities (People, Locations, Concepts, Metrics).
-- **Table View**: Exportable and sortable data view.
+### 3. Adaptive Personas
+The system changes its reasoning style based on your active role:
+- **Analyst**: Rigorous fact-checking and data synthesis.
+- **Tutor**: Socratic teaching method with analogies.
+- **Critic**: Devil's advocate to find logical fallacies in your docs.
+- **Coder**: Software architecture and clean code generation.
 
-### 4. Multi-Model Support
-- **Google Gemini**: Optimized for long-context and speed (Default).
-- **Ollama**: Connect to your local LLM (e.g., Llama 3) for 100% offline reasoning.
-- **OpenAI**: Support for GPT-4o models.
+### 4. Spatial Workspace & Extraction
+- **Spatial Canvas**: Break free from linear chat. Drag, drop, and organize files and AI responses on an infinite 2D canvas.
+- **Entity Extraction**: Automatically convert unstructured text into structured JSON tables (People, Locations, Dates, Metrics).
 
 ---
 
@@ -92,7 +99,7 @@ graph TD
     *   `@google/genai` (Gemini SDK)
     *   `@xenova/transformers` (In-browser Inference)
     *   `pdfjs-dist` (PDF Parsing)
-*   **Icons**: Lucide React
+*   **Visualization**: Custom Spatial Canvas (SVG/React)
 
 ---
 
@@ -144,7 +151,7 @@ To use IRIE completely offline with Ollama:
 ## Roadmap
 
 *   [ ] **Podcast Mode**: Generate audio conversations from documents (Coming Soon).
-*   [ ] **Web Search Grounding**: Connect Gemini Search tools.
+*   [ ] **Web Search Grounding**: Connect Gemini Search tools for live info.
 *   [ ] **Graph View**: Force-directed graph visualization of knowledge nodes.
 
 ---

@@ -46,7 +46,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ files, onUpload, onDeleteFile,
             {!isCollapsed && (
                 <div className="animate-in fade-in duration-300">
                     <h1 className="font-bold text-sm tracking-widest text-primary">IRIE</h1>
-                    <p className="text-[10px] text-textDim uppercase tracking-wider">OS</p>
+                    <p className="text-[10px] text-textDim uppercase tracking-wider">AI</p>
                 </div>
             )}
         </div>

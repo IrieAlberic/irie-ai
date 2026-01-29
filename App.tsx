@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { ChatInterface } from './components/ChatInterface';
@@ -5,13 +6,17 @@ import { SpatialCanvas } from './components/SpatialCanvas';
 import { DataView } from './components/DataView';
 import { SettingsModal } from './components/SettingsModal';
 import { DocumentViewer } from './components/DocumentViewer';
+import { LandingPage } from './components/LandingPage';
 import { Icon } from './components/Icon';
 import { processFile } from './services/documentProcessor';
 import { retrieveContext, generateRAGResponse, extractStructuredData } from './services/ai';
-import { UploadedFile, AppView, Message, ExtractedEntity, AISettings, DocumentChunk } from './types';
+import { UploadedFile, AppView, Message, ExtractedEntity, AISettings, DocumentChunk, AIRole } from './types';
 import { db, updateFilePosition, updateMessagePosition, deleteFileFromDb, deleteMessageFromDb, clearMessagesFromDb, purgeDatabase } from './services/db';
 
 const App: React.FC = () => {
+  // Application State
+  const [hasLaunched, setHasLaunched] = useState(false);
+  
   const [view, setView] = useState<AppView>('chat');
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -20,6 +25,9 @@ const App: React.FC = () => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  // Active Role State
+  const [activeRole, setActiveRole] = useState<AIRole>('analyst');
+
   // Settings State
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [aiSettings, setAiSettings] = useState<AISettings>({
@@ -27,6 +35,7 @@ const App: React.FC = () => {
     embeddingProvider: 'local', // Defaulting to Local for offline-first
     geminiKey: process.env.API_KEY || '', 
     openaiKey: '',
+    openrouterKey: '',
     ollamaUrl: 'http://localhost:11434',
     modelName: 'gemini-3-flash-preview'
   });
@@ -54,8 +63,23 @@ const App: React.FC = () => {
         const persistedData = await db.extractedData.toArray();
 
         if (persistedFiles.length > 0) setFiles(persistedFiles);
-        if (persistedMessages.length > 0) setMessages(persistedMessages);
         if (persistedData.length > 0) setExtractedData(persistedData);
+
+        // BOOT SEQUENCE: If no messages exist, introduce IRIE (Clean Version)
+        if (persistedMessages.length === 0) {
+            const bootMessage: Message = {
+                id: 'system-boot',
+                role: 'model',
+                content: `**SYSTEM ONLINE.**\n\nGreetings. I am **IRIE**, your Local-First Knowledge Operating System.\n\nI am designed to analyze your private documents securely within this browser. No data leaves your device without your explicit command.\n\n**To begin:**\n\n1. Upload a PDF, CSV, or Markdown file using the sidebar.\n2. Select a Persona (Analyst, Tutor, Coder) from the menu below.\n3. Ask questions to interrogate your data.\n\n*Waiting for data ingestion...*`,
+                timestamp: Date.now()
+            };
+            setMessages([bootMessage]);
+            // We save it so it persists on reload until cleared
+            await db.messages.add(bootMessage);
+        } else {
+            setMessages(persistedMessages);
+        }
+
       } catch (err) {
         console.error("Failed to load IndexedDB data", err);
       }
@@ -88,6 +112,9 @@ const App: React.FC = () => {
     if (window.confirm("Clear current session history?")) {
         setMessages([]);
         await clearMessagesFromDb();
+        
+        // Re-inject boot message after clear for better UX? 
+        // Optional, but let's keep it clean for now.
     }
   };
 
@@ -178,10 +205,17 @@ const App: React.FC = () => {
                 text: forceContext
             }];
         } else {
+             // Retrieve context
              context = await retrieveContext(userMsg.content, allChunks, aiSettings);
         }
 
-        const responseText = await generateRAGResponse([...messages, userMsg], context, aiSettings);
+        // Pass activeRole to generator
+        const responseText = await generateRAGResponse(
+            [...messages, userMsg], 
+            context, 
+            aiSettings, 
+            activeRole
+        );
 
         const aiMsg: Message = {
             id: crypto.randomUUID(),
@@ -249,8 +283,14 @@ const App: React.FC = () => {
 
   const viewingFile = files.find(f => f.id === viewingFileId);
 
+  // --- RENDER ---
+  
+  if (!hasLaunched) {
+      return <LandingPage onLaunch={() => setHasLaunched(true)} />;
+  }
+
   return (
-    <div className="flex h-screen w-screen bg-background text-text overflow-hidden font-sans">
+    <div className="flex h-screen w-screen bg-background text-text overflow-hidden font-sans animate-in fade-in duration-500">
       <Sidebar 
         files={files} 
         onUpload={handleFileUpload} 
@@ -272,6 +312,8 @@ const App: React.FC = () => {
                     onCitationClick={handleCitationClick}
                     onClearChat={handleClearChat}
                     onDeleteMessage={handleDeleteMessage}
+                    activeRole={activeRole}
+                    onRoleChange={setActiveRole}
                 />
             )}
             {view === 'spatial' && (
