@@ -3,25 +3,36 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
-  // Load env file based on `mode` in the current working directory.
-  // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
   const env = loadEnv(mode, process.cwd(), '');
 
   return {
     plugins: [react()],
+    resolve: {
+      alias: {
+        // Map native node modules to browser polyfills
+        crypto: 'crypto-browserify',
+        stream: 'stream-browserify',
+        assert: 'assert',
+        buffer: 'buffer',
+        process: 'process/browser',
+        util: 'util',
+        path: 'path-browserify',
+        os: 'os-browserify',
+        events: 'events',
+      },
+    },
     build: {
-      target: 'esnext', // Required for Top-level await used in workers/transformers
+      target: 'esnext',
       outDir: 'dist',
     },
     worker: {
       format: 'es',
     },
     optimizeDeps: {
-      // Exclude heavy libs from optimization to avoid double-bundling issues
       exclude: ['pdfjs-dist', '@xenova/transformers'],
+      include: ['buffer', 'process']
     },
     define: {
-      // Polyfill process.env for the application code that uses it
       'process.env': {
          API_KEY: JSON.stringify(env.API_KEY)
       }

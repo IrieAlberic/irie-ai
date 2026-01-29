@@ -1,4 +1,11 @@
 
+import { Buffer } from 'buffer';
+import process from 'process';
+
+// Polyfill globals for libraries relying on them
+window.Buffer = Buffer;
+window.process = process;
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
