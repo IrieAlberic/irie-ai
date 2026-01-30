@@ -6,7 +6,7 @@
 **IRIE AI** is a secure, local-first **Knowledge Operating System**. Unlike traditional chatbots that send your data to the cloud blindly, IRIE AI indexes your documents (PDF, TXT, MD, CSV) directly in your browser using IndexedDB and Vector Embeddings.
 
 It creates a "neural layer" over your files, allowing you to chat, reason, and visualize connections securely using a Multi-Model architecture (Gemini, OpenAI, Ollama, OpenRouter).
-![Status](img.png)
+![Application Screenshot ](img.png)
 ---
 
 ## System Architecture
