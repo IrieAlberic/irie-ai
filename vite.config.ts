@@ -7,6 +7,18 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    
+    // Config Spécifique pour Tauri (Logiciel Bureau)
+    server: {
+      port: 1420,
+      strictPort: true,
+      watch: {
+        ignored: ["**/src-tauri/**"],
+      },
+    },
+    // Préfixes d'environnement pour Tauri
+    envPrefix: ['VITE_', 'TAURI_'],
+
     resolve: {
       alias: {
         // Map native node modules to browser polyfills
