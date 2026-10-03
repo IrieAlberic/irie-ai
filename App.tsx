@@ -9,7 +9,7 @@ import { DocumentViewer } from './components/DocumentViewer';
 import { LandingPage } from './components/LandingPage';
 import { Icon } from './components/Icon';
 import { processFile } from './services/documentProcessor';
-import { retrieveContext, generateRAGResponse, extractStructuredData } from './services/ai';
+import { retrieveContext, generateRAGResponse, extractStructuredData, ensureChunks } from './services/ai';
 import { UploadedFile, AppView, Message, ExtractedEntity, AISettings, DocumentChunk, AIRole } from './types';
 import { db, updateFilePosition, updateMessagePosition, deleteFileFromDb, deleteMessageFromDb, clearMessagesFromDb, purgeDatabase } from './services/db';
 
@@ -22,6 +22,7 @@ const App: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [extractedData, setExtractedData] = useState<ExtractedEntity[]>([]);
   const [isExtracting, setIsExtracting] = useState(false);
+  const [extractionError, setExtractionError] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -199,14 +200,15 @@ const App: React.FC = () => {
     setIsLoading(true);
 
     try {
-        const allChunks = files.flatMap(f => f.chunks);
+        const readyFiles = files.filter(f => f.status === 'ready');
+        const allChunks = readyFiles.flatMap(ensureChunks);
         let context: DocumentChunk[] = [];
         
         if (forceContext) {
             context = [{
                 id: 'force-ctx',
                 docId: 'Selected Node',
-                text: forceContext
+                text: forceContext.slice(0, 30000)
             }];
         } else {
              // Retrieve context
@@ -218,7 +220,8 @@ const App: React.FC = () => {
             [...messages, userMsg], 
             context, 
             aiSettings, 
-            activeRole
+            activeRole,
+            readyFiles.map(f => f.name)
         );
 
         const aiMsg: Message = {
@@ -226,7 +229,7 @@ const App: React.FC = () => {
             role: 'model',
             content: responseText,
             timestamp: Date.now(),
-            citations: context
+            citations: context.slice(0, 6)
         };
 
         // Update UI & DB
@@ -268,13 +271,24 @@ const App: React.FC = () => {
   const handleDataExtraction = async () => {
     if (files.length === 0) return;
     setIsExtracting(true);
-    const contents = files.map(f => f.content);
-    const data = await extractStructuredData(contents, aiSettings);
-    
-    setExtractedData(data);
-    await db.extractedData.bulkPut(data); // Batch save
-    
-    setIsExtracting(false);
+    setExtractionError(null);
+    try {
+      const data = await extractStructuredData(
+        files.filter(f => f.status === 'ready').map(f => ({ name: f.name, content: f.content })),
+        aiSettings
+      );
+      if (data.length === 0) {
+        setExtractionError("No entities were found in your documents.");
+      } else {
+        await db.extractedData.clear();
+        setExtractedData(data);
+        await db.extractedData.bulkPut(data); // Batch save
+      }
+    } catch (err) {
+      setExtractionError((err as Error).message);
+    } finally {
+      setIsExtracting(false);
+    }
   };
 
   const handleCitationClick = (citation: DocumentChunk) => {
@@ -368,6 +382,7 @@ const App: React.FC = () => {
                     data={extractedData} 
                     isLoading={isExtracting} 
                     onRefresh={handleDataExtraction}
+                    error={extractionError}
                 />
             )}
             {view === 'podcast' && (

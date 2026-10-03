@@ -2,6 +2,7 @@
 import { pipeline, env } from '@xenova/transformers';
 import * as pdfjsLib from 'pdfjs-dist';
 import { GoogleGenAI } from "@google/genai";
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.js?url';
 
 // --- CONFIG ---
 env.allowLocalModels = false;
@@ -10,7 +11,7 @@ env.useBrowserCache = true;
 // Fix for pdfjs-dist import
 const pdf = (pdfjsLib as any).default || pdfjsLib;
 if (pdf.GlobalWorkerOptions) {
-  pdf.GlobalWorkerOptions.workerSrc = 'https://esm.sh/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+  pdf.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 }
 
 // Singleton for the worker's embedding pipeline
@@ -245,7 +246,7 @@ self.onmessage = async (e: MessageEvent) => {
        rawText = dec.decode(fileData);
     }
 
-    if (!rawText.trim()) throw new Error("File content is empty or unreadable.");
+    if (!rawText.trim()) throw new Error(isPDF ? "No text found in this PDF (scanned images are not supported)." : "File content is empty or unreadable.");
 
     let chunksText: string[] = [];
     let cleanedContent = '';
@@ -267,42 +268,49 @@ self.onmessage = async (e: MessageEvent) => {
       chunksText = splitTextRecursive(cleanedContent, TARGET_CHUNK_SIZE);
     }
 
-    const processedChunks: any[] = [];
-    const BATCH_LIMIT = 50; 
-    const chunksToProcess = chunksText.slice(0, BATCH_LIMIT); 
-    
-    let completed = 0;
-    let lastEmbeddingError = '';
-    for (const text of chunksToProcess) {
-       if (text.length < 15) continue; 
+    const candidates = chunksText.filter(t => t.length >= 15);
+    // Embedding is the slow / paid part: cap it, but keep every chunk's text so
+    // the rest of the document stays searchable by keyword and in full-context mode.
+    const maxEmbedded = settings.embeddingProvider === 'local' ? 150 : 60;
 
-       self.postMessage({ 
-         type: 'status', 
-         status: 'indexing', 
-         message: `Embedding chunk ${completed + 1}/${chunksToProcess.length}...` 
-       });
-       
-       try {
-         const embedding = await calculateEmbedding(text, settings);
-         if (embedding) {
-           processedChunks.push({ 
-             id: `${fileId}-${completed}`,
-             docId: fileName,
-             text: text,
-             embedding 
-           });
+    const processedChunks: any[] = [];
+    let embeddedCount = 0;
+    let lastEmbeddingError = '';
+
+    for (let i = 0; i < candidates.length; i++) {
+       const text = candidates[i];
+       let embedding: number[] | null = null;
+
+       if (i < maxEmbedded && !(embeddedCount === 0 && i >= 3 && lastEmbeddingError)) {
+         self.postMessage({ 
+           type: 'status', 
+           status: 'indexing', 
+           message: `Embedding chunk ${i + 1}/${Math.min(candidates.length, maxEmbedded)}...` 
+         });
+         try {
+           embedding = await calculateEmbedding(text, settings);
+           if (embedding) embeddedCount++;
+         } catch (err) {
+           console.warn("Embedding failed", err);
+           lastEmbeddingError = (err as Error)?.message || String(err);
          }
-       } catch (err) {
-         console.warn("Embedding failed", err);
-         lastEmbeddingError = (err as Error)?.message || String(err);
        }
-       completed++;
+
+       processedChunks.push({
+         id: `${fileId}-${i}`,
+         docId: fileName,
+         text,
+         ...(embedding ? { embedding } : {})
+       });
     }
 
-    if (processedChunks.length === 0) {
-      throw new Error(lastEmbeddingError
-        ? `Indexing failed: ${lastEmbeddingError}`
-        : 'Indexing failed: no embedding provider is configured (check your API key in Settings).');
+    let warning: string | undefined;
+    if (embeddedCount === 0) {
+      warning = lastEmbeddingError
+        ? `Semantic search unavailable (${lastEmbeddingError}). Keyword search is used instead.`
+        : 'Semantic search unavailable (no embedding provider configured). Keyword search is used instead.';
+    } else if (candidates.length > maxEmbedded) {
+      warning = `Large document: only the first ${maxEmbedded} of ${candidates.length} sections are semantically indexed; the rest is searched by keyword.`;
     }
 
     self.postMessage({
@@ -314,7 +322,8 @@ self.onmessage = async (e: MessageEvent) => {
         content: cleanedContent, 
         size: fileData.byteLength,
         status: 'ready',
-        chunks: processedChunks
+        chunks: processedChunks,
+        warning
       }
     });
 

@@ -6,9 +6,10 @@ interface DataViewProps {
   data: ExtractedEntity[];
   isLoading: boolean;
   onRefresh: () => void;
+  error?: string | null;
 }
 
-export const DataView: React.FC<DataViewProps> = ({ data, isLoading, onRefresh }) => {
+export const DataView: React.FC<DataViewProps> = ({ data, isLoading, onRefresh, error }) => {
   return (
     <div className="flex flex-col h-full bg-[#09090b] text-text relative">
       {/* Header */}
@@ -32,6 +33,12 @@ export const DataView: React.FC<DataViewProps> = ({ data, isLoading, onRefresh }
 
       {/* Table Content */}
       <div className="flex-1 overflow-auto p-6">
+        {error && (
+          <div className="mb-4 flex items-start gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-xs text-red-300">
+            <Icon name="AlertTriangle" size={16} className="shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        )}
         {data.length === 0 && !isLoading ? (
             <div className="flex flex-col items-center justify-center h-64 text-textDim opacity-50 border border-dashed border-white/10 rounded-xl">
                 <Icon name="Table" size={48} className="mb-4" />

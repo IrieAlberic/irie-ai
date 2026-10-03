@@ -125,7 +125,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ files, onUpload, onDeleteFile,
                             <Icon name="FileText" size={14} className="text-textDim" />
                             <span className="text-sm text-text truncate w-32">{file.name}</span>
                         </div>
-                        <span className={`w-2 h-2 rounded-full ${file.status === 'ready' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-yellow-500 animate-pulse'}`} />
+                        {file.warning && <span title={file.warning} className="shrink-0 mr-1"><Icon name="AlertTriangle" size={12} className="text-yellow-500" /></span>}
+                        {file.status === 'error' && <span title="Indexing failed" className="shrink-0 mr-1"><Icon name="XCircle" size={12} className="text-red-500" /></span>}
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${file.status === 'ready' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-yellow-500 animate-pulse'}`} />
                     </div>
                 ))}
 

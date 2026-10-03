@@ -14,6 +14,8 @@ export interface UploadedFile {
   size: number;
   status: 'indexing' | 'ready' | 'error';
   chunks: DocumentChunk[];
+  // Non-fatal indexing notice shown in the sidebar
+  warning?: string;
   // Position pour le Spatial Canvas
   x?: number;
   y?: number;

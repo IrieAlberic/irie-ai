@@ -226,7 +226,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         </div>
         <div className="max-w-3xl mx-auto mt-2 text-center">
             <p className="text-[10px] text-textDim/40 font-mono">
-                System access restricted. All interactions are processed locally within the current session.
+                Your documents stay in this browser. Only the excerpts relevant to your question are sent to the AI provider you selected.
             </p>
         </div>
       </div>
