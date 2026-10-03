@@ -8,7 +8,7 @@ interface LandingPageProps {
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onLaunch }) => {
   return (
-    <div className="min-h-screen bg-[#09090b] text-white font-sans overflow-y-auto selection:bg-accent/30 relative">
+    <div className="h-screen w-screen bg-[#09090b] text-white font-sans overflow-y-auto overflow-x-hidden selection:bg-accent/30 relative">
       
       {/* Background Grid */}
       <div className="fixed inset-0 grid-bg opacity-30 pointer-events-none" />
