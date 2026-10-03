@@ -9,9 +9,11 @@ interface SidebarProps {
   currentView: AppView;
   onViewChange: (view: AppView) => void;
   onOpenSettings: () => void;
+  mobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ files, onUpload, onDeleteFile, currentView, onViewChange, onOpenSettings }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ files, onUpload, onDeleteFile, currentView, onViewChange, onOpenSettings, mobileOpen = false, onCloseMobile }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const totalChunks = files.reduce((acc, f) => acc + f.chunks.length, 0);
 
@@ -31,10 +33,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ files, onUpload, onDeleteFile,
   }, []);
 
   return (
+    <>
+    {/* Mobile backdrop */}
+    {mobileOpen && (
+      <div className="fixed inset-0 bg-black/60 z-30 md:hidden" onClick={onCloseMobile} />
+    )}
     <aside 
       className={`
-        bg-surface border-r border-border flex flex-col h-full z-20 shrink-0 transition-all duration-300 ease-in-out select-none
-        ${isCollapsed ? 'w-[70px]' : 'w-64'}
+        bg-surface border-r border-border flex flex-col h-full shrink-0 transition-all duration-300 ease-in-out select-none
+        fixed inset-y-0 left-0 z-40 w-64 md:static md:z-20 md:translate-x-0
+        ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
+        ${isCollapsed ? 'md:w-[70px]' : 'md:w-64'}
       `}
     >
       {/* Header */}
@@ -52,7 +61,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ files, onUpload, onDeleteFile,
         </div>
         <button 
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className={`text-textDim hover:text-white transition-colors ${isCollapsed ? 'hidden' : 'block'}`}
+            className={`text-textDim hover:text-white transition-colors ${isCollapsed ? 'hidden' : 'hidden md:block'}`}
         >
             <Icon name="ChevronLeft" size={16} />
         </button>
@@ -78,7 +87,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ files, onUpload, onDeleteFile,
         ].map((item) => (
             <button 
                 key={item.id}
-                onClick={() => onViewChange(item.id as AppView)}
+                onClick={() => { onViewChange(item.id as AppView); onCloseMobile?.(); }}
                 className={`
                     w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors relative group
                     ${currentView === item.id ? 'bg-surfaceHighlight text-primary' : 'text-textDim hover:text-primary'}
@@ -116,7 +125,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ files, onUpload, onDeleteFile,
                             <Icon name="FileText" size={14} className="text-textDim" />
                             <span className="text-sm text-text truncate w-32">{file.name}</span>
                         </div>
-                        <span className={`w-2 h-2 rounded-full ${file.status === 'ready' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-yellow-500 animate-pulse'}`} />
+                        {file.warning && <span title={file.warning} className="shrink-0 mr-1"><Icon name="AlertTriangle" size={12} className="text-yellow-500" /></span>}
+                        {file.status === 'error' && <span title="Indexing failed" className="shrink-0 mr-1"><Icon name="XCircle" size={12} className="text-red-500" /></span>}
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${file.status === 'ready' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-yellow-500 animate-pulse'}`} />
                     </div>
                 ))}
 
@@ -158,7 +169,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ files, onUpload, onDeleteFile,
       {/* Footer / Settings */}
       <div className={`p-4 border-t border-border bg-black/20 ${isCollapsed ? 'flex justify-center' : ''}`}>
         <button 
-          onClick={onOpenSettings}
+          onClick={() => { onOpenSettings(); onCloseMobile?.(); }}
           className={`
             flex items-center gap-2 text-textDim hover:text-white transition-colors text-xs font-mono mb-2
             ${isCollapsed ? 'justify-center w-full' : 'w-full'}
@@ -202,5 +213,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ files, onUpload, onDeleteFile,
         </div>
       )}
     </aside>
+    </>
   );
 };

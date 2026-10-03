@@ -123,15 +123,12 @@ The system changes its reasoning style based on your active role:
     npm install
     ```
 
-3.  Set up environment variables (Optional):
-    Create a `.env` file:
-    ```env
-    API_KEY=your_gemini_api_key_here
-    ```
+3.  (Optional, local use only) Create a `.env` file with `API_KEY=your_gemini_api_key`.
+    **Do not set `API_KEY` on a public deployment**: Vite inlines it into the public JavaScript bundle. Visitors enter their own keys in Settings; they are stored only in their browser.
 
 4.  Start the development server:
     ```bash
-    npm start
+    npm run dev
     ```
 
 ---

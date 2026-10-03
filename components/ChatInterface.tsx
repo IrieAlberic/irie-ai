@@ -55,7 +55,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-8 space-y-8 z-10 scroll-smooth">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 pt-14 md:pt-8 space-y-8 z-10 scroll-smooth">
         {messages.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center opacity-30 select-none">
             <Icon name="BrainCircuit" size={64} className="mb-4 text-textDim" />
@@ -141,7 +141,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       </div>
 
       {/* Input Area */}
-      <div className="p-6 z-20 relative">
+      <div className="p-3 md:p-6 z-20 relative">
         <div className="max-w-3xl mx-auto glass-panel p-2 rounded-xl flex flex-col shadow-2xl relative">
             
             {/* Role Selector Trigger */}
@@ -226,7 +226,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         </div>
         <div className="max-w-3xl mx-auto mt-2 text-center">
             <p className="text-[10px] text-textDim/40 font-mono">
-                System access restricted. All interactions are processed locally within the current session.
+                Your documents stay in this browser. Only the excerpts relevant to your question are sent to the AI provider you selected.
             </p>
         </div>
       </div>

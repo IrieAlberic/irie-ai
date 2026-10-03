@@ -36,6 +36,15 @@ export default defineConfig(({ mode }) => {
     build: {
       target: 'esnext',
       outDir: 'dist',
+      chunkSizeWarningLimit: 3000,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            vendor: ['react', 'react-dom', 'react-markdown', 'lucide-react'],
+            ai: ['@google/genai', 'dexie'],
+          },
+        },
+      },
     },
     worker: {
       format: 'es',

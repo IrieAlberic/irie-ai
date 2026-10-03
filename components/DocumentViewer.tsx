@@ -52,7 +52,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({ file, highlightT
   };
 
   return (
-    <div className="absolute top-0 right-0 h-full w-[500px] bg-surface border-l border-border shadow-2xl z-40 flex flex-col animate-in slide-in-from-right duration-300">
+    <div className="absolute top-0 right-0 h-full w-full md:w-[500px] max-w-full bg-surface border-l border-border shadow-2xl z-40 flex flex-col animate-in slide-in-from-right duration-300">
       
       {/* Header */}
       <div className="h-14 flex items-center justify-between px-6 border-b border-border bg-surfaceHighlight/20 backdrop-blur">
