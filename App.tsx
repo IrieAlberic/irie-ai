@@ -50,7 +50,11 @@ const App: React.FC = () => {
   useEffect(() => {
     const saved = localStorage.getItem('irie_ai_settings');
     if (saved) {
-      setAiSettings(JSON.parse(saved));
+      try {
+        setAiSettings(prev => ({ ...prev, ...JSON.parse(saved) }));
+      } catch {
+        localStorage.removeItem('irie_ai_settings');
+      }
     }
   }, []);
 

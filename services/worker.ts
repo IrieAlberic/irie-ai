@@ -209,7 +209,7 @@ const calculateEmbedding = async (text: string, settings: any) => {
           input: text
       })
     });
-    if (!response.ok) return null;
+    if (!response.ok) throw new Error(`OpenAI embeddings failed (${response.status})`);
     const data = await response.json();
     return data.data[0].embedding;
   }
@@ -219,7 +219,7 @@ const calculateEmbedding = async (text: string, settings: any) => {
   if (!key) return null;
   const ai = new GoogleGenAI({ apiKey: key });
   const response = await ai.models.embedContent({
-    model: 'text-embedding-004',
+    model: 'gemini-embedding-001',
     contents: [{ parts: [{ text }] }]
   });
   return response.embeddings?.[0]?.values || null;
@@ -272,6 +272,7 @@ self.onmessage = async (e: MessageEvent) => {
     const chunksToProcess = chunksText.slice(0, BATCH_LIMIT); 
     
     let completed = 0;
+    let lastEmbeddingError = '';
     for (const text of chunksToProcess) {
        if (text.length < 15) continue; 
 
@@ -293,8 +294,15 @@ self.onmessage = async (e: MessageEvent) => {
          }
        } catch (err) {
          console.warn("Embedding failed", err);
+         lastEmbeddingError = (err as Error)?.message || String(err);
        }
        completed++;
+    }
+
+    if (processedChunks.length === 0) {
+      throw new Error(lastEmbeddingError
+        ? `Indexing failed: ${lastEmbeddingError}`
+        : 'Indexing failed: no embedding provider is configured (check your API key in Settings).');
     }
 
     self.postMessage({

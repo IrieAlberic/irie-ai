@@ -34,6 +34,16 @@ const cosineSimilarity = (vecA: number[], vecB: number[]): number => {
   return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
 };
 
+// Chat APIs expect the conversation to start with a user turn, and OpenAI-style
+// APIs call the AI role 'assistant' (not 'model').
+const toChatHistory = (history: Message[]): Message[] => {
+  const turns = history.filter(m => m.role !== 'system' && m.content.trim());
+  const firstUser = turns.findIndex(m => m.role === 'user');
+  return firstUser === -1 ? [] : turns.slice(firstUser);
+};
+
+const toOpenAIRole = (role: Message['role']) => (role === 'model' ? 'assistant' : role);
+
 // --- EMBEDDINGS (Memory) ---
 
 export const getEmbedding = async (text: string, settings: AISettings): Promise<number[] | null> => {
@@ -64,7 +74,7 @@ export const getEmbedding = async (text: string, settings: AISettings): Promise<
             input: text
         })
       });
-      if (!response.ok) throw new Error("OpenAI Embedding Failed");
+      if (!response.ok) throw new Error(`OpenAI Embedding Failed (${response.status})`);
       const data = await response.json();
       return data.data[0].embedding;
     } catch (error) {
@@ -80,7 +90,7 @@ export const getEmbedding = async (text: string, settings: AISettings): Promise<
   try {
     const ai = new GoogleGenAI({ apiKey: key });
     const response = await ai.models.embedContent({
-      model: 'text-embedding-004',
+      model: 'gemini-embedding-001',
       contents: [{ parts: [{ text }] }]
     });
     return response.embeddings?.[0]?.values || null;
@@ -153,9 +163,7 @@ export const generateRAGResponse = async (
   `;
 
   // TOKEN OPTIMIZATION: Sliding Window Strategy
-  const recentHistory = history
-    .filter(m => m.role !== 'system')
-    .slice(-10);
+  const recentHistory = toChatHistory(history.filter(m => m.role !== 'system').slice(-10));
 
   try {
     // --- 1. GEMINI PROVIDER ---
@@ -183,7 +191,7 @@ export const generateRAGResponse = async (
 
         const messages = [
             { role: "system", content: finalSystemPrompt },
-            ...recentHistory.map(m => ({ role: m.role, content: m.content }))
+            ...recentHistory.map(m => ({ role: toOpenAIRole(m.role), content: m.content }))
         ];
 
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -211,7 +219,7 @@ export const generateRAGResponse = async (
 
     // --- 3. OLLAMA PROVIDER (Local) ---
     if (settings.provider === 'ollama') {
-        const baseUrl = settings.ollamaUrl || 'http://localhost:11434';
+        const baseUrl = (settings.ollamaUrl || 'http://localhost:11434').replace(/\/+$/, '');
         
         // Construct prompt manually for Ollama
         const fullPrompt = `${finalSystemPrompt}\n\nChat History:\n${recentHistory.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n')}\n\nMODEL ANSWER:`;
@@ -226,7 +234,9 @@ export const generateRAGResponse = async (
             })
         });
 
-        if (!response.ok) throw new Error("Ollama connection failed");
+        if (!response.ok) {
+          throw new Error(`Ollama returned ${response.status}. Is the model "${settings.modelName || 'llama3'}" pulled?`);
+        }
         const data = await response.json();
         return data.response;
     }
@@ -237,7 +247,7 @@ export const generateRAGResponse = async (
 
         const messages = [
             { role: "system", content: finalSystemPrompt },
-            ...recentHistory.map(m => ({ role: m.role, content: m.content }))
+            ...recentHistory.map(m => ({ role: toOpenAIRole(m.role), content: m.content }))
         ];
 
         const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -265,7 +275,12 @@ export const generateRAGResponse = async (
 
   } catch (error: any) {
     console.error("Generation Error:", error);
-    return `System Error: ${error.message}`;
+    // A failed fetch is almost always CORS / network, e.g. a browser on a remote
+    // site cannot reach the visitor's local Ollama unless OLLAMA_ORIGINS allows it.
+    if (error instanceof TypeError && settings.provider === 'ollama') {
+      throw new Error(`Cannot reach Ollama at ${settings.ollamaUrl || 'http://localhost:11434'}. Make sure it is running and started with OLLAMA_ORIGINS="*" (browser CORS).`);
+    }
+    throw error;
   }
 };
 
