@@ -45,7 +45,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
       <div className="w-full max-w-2xl bg-[#09090b] border border-border rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/5 bg-surfaceHighlight/30 shrink-0">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/5 bg-surfaceHighlight/30 shrink-0">
           <div>
             <h2 className="text-xl font-bold text-white flex items-center gap-3">
               <Icon name="Settings" className="text-accent" />
@@ -59,10 +59,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
         </div>
 
         {/* Body */}
-        <div className="p-8 space-y-8 overflow-y-auto custom-scrollbar">
+        <div className="p-4 sm:p-8 space-y-8 overflow-y-auto custom-scrollbar">
           
           {/* Quick Presets */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <button 
               onClick={() => applyPreset('offline')}
               className={`p-4 border rounded-xl text-left transition-all group ${localSettings.provider === 'ollama' && localSettings.embeddingProvider === 'local' ? 'bg-green-500/10 border-green-500/50' : 'bg-surfaceHighlight/50 border-white/5 hover:border-white/20'}`}
@@ -101,7 +101,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                 <h3 className="text-sm font-bold uppercase tracking-wider text-textDim">Knowledge Indexing Engine</h3>
              </div>
              
-             <div className="grid grid-cols-3 gap-3">
+             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                  {[
                    { id: 'local', label: 'Local (Offline)', icon: 'Cpu', desc: 'Free, Private, Browser-based' },
                    { id: 'gemini', label: 'Google Gemini', icon: 'Cloud', desc: 'High accuracy, Requires API Key' },
@@ -135,7 +135,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                 <h3 className="text-sm font-bold uppercase tracking-wider text-textDim">Reasoning Provider (LLM)</h3>
              </div>
              
-             <div className="grid grid-cols-4 gap-2">
+             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {(['gemini', 'openai', 'openrouter', 'ollama'] as AIProvider[]).map(provider => (
                   <button
                     key={provider}
